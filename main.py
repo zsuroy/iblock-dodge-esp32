@@ -12,6 +12,8 @@ import time
 import random
 from machine import Pin, I2C
 from ssd1306 import SSD1306_I2C
+from network_config import NetworkConfig
+from web_server import WebServer
 
 
 class DHTSensor:
@@ -68,13 +70,45 @@ class Game:
         self.last_spawn_time = 0
         
         self.ENABLE_DEBUG = False
+        
+        # Web控制相关
+        self.web_server = None
+        self.last_web_check = 0
+        self.WEB_CHECK_INTERVAL = 100  # 每100ms检查一次Web请求
 
         self.reset_game()
+        
+        # 初始化网络和Web服务器
+        self.setup_network()
     
     def debug_log(self, log):
         if self.ENABLE_DEBUG:
             print(log)
 
+    def setup_network(self):
+        """设置网络和Web服务器"""
+        try:
+            # 设置AP模式
+            network = NetworkConfig()
+            ip = network.setup_ap()
+            
+            # 启动Web服务器
+            self.web_server = WebServer(self)
+            self.web_server.start()
+            
+            # 在OLED上显示IP地址
+            self.oled.fill(0)
+            self.oled.text("WiFi Started!", 0, 0, 1)
+            self.oled.text("IP:", 0, 16, 1)
+            self.oled.text(ip[:], 0, 24, 1)
+            self.oled.text("Ready!", 0, 48, 1)
+            self.oled.show()
+            time.sleep(3)
+            
+            self.debug_log(f"网络设置完成，IP: {ip}")
+        except Exception as e:
+            self.debug_log(f"网络设置失败: {e}")
+            
     def reset_game(self):
         self.PLAYER_X = self.WIDTH // 2 - self.PLAYER_SIZE // 2
         self.blocks = []
@@ -112,6 +146,9 @@ class Game:
         self.oled.show()
 
     def handle_input(self):
+        # 处理Web控制命令
+        self.handle_web_input()
+        
         # 读取按键状态 - 向右移动
         if self.button_right.value() == 0:  # 按键按下 (低电平)
             self.PLAYER_X = min(self.WIDTH - self.PLAYER_SIZE, self.PLAYER_X + self.PLAYER_SIZE // 2)
@@ -123,6 +160,24 @@ class Game:
             self.PLAYER_X = max(0, self.PLAYER_X - self.PLAYER_SIZE // 2)
             while self.button_left.value() == 0:  # 等待按键释放
                 time.sleep_ms(10)
+                
+    def handle_web_input(self):
+        """处理Web控制输入"""
+        if self.web_server and time.ticks_diff(time.ticks_ms(), self.last_web_check) >= self.WEB_CHECK_INTERVAL:
+            # 处理Web请求
+            self.web_server.process_requests()
+            
+            # 获取Web控制命令
+            commands = self.web_server.get_web_commands()
+            for command in commands:
+                if command == 'left':
+                    self.PLAYER_X = max(0, self.PLAYER_X - self.PLAYER_SIZE // 2)
+                    self.debug_log("Web控制: 左移")
+                elif command == 'right':
+                    self.PLAYER_X = min(self.WIDTH - self.PLAYER_SIZE, self.PLAYER_X + self.PLAYER_SIZE // 2)
+                    self.debug_log("Web控制: 右移")
+                    
+            self.last_web_check = time.ticks_ms()
 
     def spawn_blocks(self):
         if time.ticks_diff(time.ticks_ms(), self.last_spawn_time) >= self.SPAWN_RATE * 1000 and self.gen_block:
