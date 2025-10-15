@@ -11,7 +11,7 @@
 
 ## Demo Video
 
-🎥 [Video Preview](src/Block-Dodge.mp4)
+🎥 [Video Preview](https://www.bilibili.com/video/BV1p14vzXEVL/)
 
 ## Game Features
 
