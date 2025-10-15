@@ -41,7 +41,7 @@
 - **Right Button (GPIO28)**: Move player right
 
 ### Web Control Interface
-- **WiFi Network**: Connect to "ESP32-Game" (Password: 12345678)
+- **WiFi Network**: Connect to "SUROY_AP" (Password: 88888888)
 - **Access URL**: Open browser and visit the ESP32's IP address (displayed on OLED)
 - **Web Controls**:
   - Left/Right arrow buttons for movement
